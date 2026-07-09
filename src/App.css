@@ -1,0 +1,4 @@
+/* Custom application transitions and global helpers */
+.page-transition {
+  transition: all 0.3s ease-in-out;
+}
