@@ -64,8 +64,21 @@ export function ExamPage() {
       setVisitedQuestions(session.visitedQuestions);
     }
 
+    // Load question pool from local storage or initialize with default mock ones
+    let activePool = examQuestions;
+    const storedPool = localStorage.getItem("exam_question_pool");
+    if (storedPool) {
+      try {
+        activePool = JSON.parse(storedPool);
+      } catch (e) {
+        console.error("Error parsing stored question pool:", e);
+      }
+    } else {
+      localStorage.setItem("exam_question_pool", JSON.stringify(examQuestions));
+    }
+
     // Shuffle options once
-    const shuffled = examQuestions.map((q) => ({
+    const shuffled = activePool.map((q) => ({
       ...q,
       options: shuffleArray(q.options),
     }));

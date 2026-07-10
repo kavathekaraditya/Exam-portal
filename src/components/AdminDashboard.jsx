@@ -2,11 +2,27 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { examQuestions } from "../mocks/examData";
 import { Shield, Eye, BarChart3, ListOrdered, FilePlus, UserCheck, ShieldAlert, Award, FileQuestion, Trash2, Home, LogOut } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("monitor"); // "monitor" | "results" | "create"
-  const [currentQuestions, setCurrentQuestions] = useState(examQuestions);
+  const [currentQuestions, setCurrentQuestions] = useState(() => {
+    const stored = localStorage.getItem("exam_question_pool");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error("Error reading question pool in admin:", e);
+      }
+    }
+    return examQuestions;
+  });
+
+  // Keep localStorage in sync when currentQuestions state changes
+  useEffect(() => {
+    localStorage.setItem("exam_question_pool", JSON.stringify(currentQuestions));
+  }, [currentQuestions]);
   
   // New Question Form state
   const [newQuestion, setNewQuestion] = useState({
@@ -185,6 +201,117 @@ export function AdminDashboard() {
   const handleDeleteQuestion = (id) => {
     setCurrentQuestions((prev) => prev.filter(q => q.id !== id));
     triggerToast("Question removed from pool.");
+  };
+
+  const downloadTemplate = () => {
+    const headers = ["Question", "Option 1", "Option 2", "Option 3", "Option 4", "Correct Answer", "Category"];
+    const exampleRow = [
+      "A car travels at 60 km/h. How far does it travel in 2.5 hours?",
+      "120 km",
+      "150 km",
+      "180 km",
+      "200 km",
+      "150 km",
+      "Quantitative"
+    ];
+    
+    // Construct CSV content safely with UTF-8 BOM
+    const csvContent = "\uFEFF" + [headers, exampleRow].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "aptitude_question_import_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    triggerToast("Template downloaded successfully!");
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert worksheet to raw arrays
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (rawRows.length < 2) {
+          triggerToast("The sheet is empty or lacks headers!");
+          return;
+        }
+
+        // Header mapping (case-insensitive & whitespace trimmed)
+        const headers = rawRows[0].map(h => String(h || "").trim().toLowerCase());
+        const rows = rawRows.slice(1);
+
+        // Map column indexes
+        const qIdx = headers.findIndex(h => h.includes("question") || h.includes("statement") || h.includes("text"));
+        const opt1Idx = headers.findIndex(h => h.includes("option 1") || h.includes("option1") || h === "a" || h === "op1");
+        const opt2Idx = headers.findIndex(h => h.includes("option 2") || h.includes("option2") || h === "b" || h === "op2");
+        const opt3Idx = headers.findIndex(h => h.includes("option 3") || h.includes("option3") || h === "c" || h === "op3");
+        const opt4Idx = headers.findIndex(h => h.includes("option 4") || h.includes("option4") || h === "d" || h === "op4");
+        const ansIdx = headers.findIndex(h => h.includes("correct answer") || h.includes("answer") || h.includes("correct") || h === "correctanswer");
+        const catIdx = headers.findIndex(h => h.includes("category") || h === "cat");
+
+        if (qIdx === -1 || opt1Idx === -1 || opt2Idx === -1 || opt3Idx === -1 || opt4Idx === -1 || ansIdx === -1) {
+          triggerToast("Invalid file structure. Ensure columns for Question, Option 1-4, and Correct Answer exist.");
+          return;
+        }
+
+        const importedQuestions = [];
+        let skippedCount = 0;
+
+        rows.forEach((row) => {
+          const text = String(row[qIdx] || "").trim();
+          const option1 = String(row[opt1Idx] || "").trim();
+          const option2 = String(row[opt2Idx] || "").trim();
+          const option3 = String(row[opt3Idx] || "").trim();
+          const option4 = String(row[opt4Idx] || "").trim();
+          const correctAnswer = String(row[ansIdx] || "").trim();
+          const category = catIdx !== -1 && row[catIdx] ? String(row[catIdx]).trim() : "Quantitative";
+
+          if (!text || !option1 || !option2 || !option3 || !option4 || !correctAnswer) {
+            skippedCount++;
+            return;
+          }
+
+          const options = [option1, option2, option3, option4];
+          if (!options.includes(correctAnswer)) {
+            skippedCount++;
+            return;
+          }
+
+          importedQuestions.push({
+            id: currentQuestions.length + importedQuestions.length + 1,
+            text,
+            options,
+            correctAnswer,
+            category,
+          });
+        });
+
+        if (importedQuestions.length === 0) {
+          triggerToast(`No valid questions imported. (Skipped ${skippedCount} rows)`);
+          return;
+        }
+
+        setCurrentQuestions((prev) => [...prev, ...importedQuestions]);
+        triggerToast(`Successfully imported ${importedQuestions.length} questions!${skippedCount > 0 ? ` (Skipped ${skippedCount} rows)` : ""}`);
+        e.target.value = ""; // clear input
+      } catch (err) {
+        console.error("Error reading file:", err);
+        triggerToast("Failed to parse sheet. Ensure it is a valid Excel or CSV file.");
+      }
+    };
+
+    reader.readAsBinaryString(file);
   };
 
   return (
@@ -443,11 +570,51 @@ export function AdminDashboard() {
         {activeTab === "create" && (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
             
-            {/* Create Form */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl">
-              <h3 className="text-white font-extrabold text-lg flex items-center gap-2">
-                <FileQuestion className="w-5 h-5 text-indigo-400" /> Create Aptitude MCQ Question
-              </h3>
+            <div className="space-y-8">
+              
+              {/* Spreadsheet Bulk Import Card */}
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-extrabold text-lg flex items-center gap-2">
+                    <FilePlus className="w-5 h-5 text-indigo-400" /> Excel / CSV Bulk Import
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={downloadTemplate}
+                    className="px-3.5 py-1.5 border border-indigo-500/20 hover:border-indigo-500/50 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    Download Template
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Upload an Excel spreadsheet (`.xlsx`, `.xls`) or a standard text file (`.csv`) to batch import questions into the portal. Ensure your headers match the downloadable template columns.
+                  </p>
+
+                  <label className="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-slate-950/20 transition-all">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="w-12 h-12 rounded-xl bg-indigo-600/10 flex items-center justify-center text-indigo-500">
+                      <FilePlus className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div className="text-center space-y-1">
+                      <span className="text-slate-300 font-semibold text-sm block">Choose Excel or CSV File</span>
+                      <span className="text-slate-500 text-[10px] block">Drag & drop or click to browse</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Create Form */}
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl">
+                <h3 className="text-white font-extrabold text-lg flex items-center gap-2">
+                  <FileQuestion className="w-5 h-5 text-indigo-400" /> Create Aptitude MCQ Question
+                </h3>
 
               <form onSubmit={handleAddQuestion} className="space-y-4">
                 
@@ -521,6 +688,8 @@ export function AdminDashboard() {
 
               </form>
             </div>
+
+          </div>
 
             {/* List current pool */}
             <div className="space-y-4">
