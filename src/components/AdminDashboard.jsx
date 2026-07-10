@@ -314,6 +314,53 @@ export function AdminDashboard() {
     reader.readAsBinaryString(file);
   };
 
+  const exportResultsToExcel = () => {
+    // Compile full reports (Registration details + Assessment marks)
+    const dataToExport = mockCompletedResults.map((result) => {
+      const isLocalUser = activeCandidate && result.id === activeCandidate.id;
+      
+      return {
+        "Candidate Name": result.fullName.replace(" (You)", ""),
+        "Roll Number": result.rollNumber,
+        "Email Address": isLocalUser ? activeCandidate.email : `${result.fullName.toLowerCase().replace(/\s/g, "")}@college.edu`,
+        "Phone Number": isLocalUser ? activeCandidate.phone : "9876543210",
+        "Institution / College": isLocalUser ? activeCandidate.college : "Government Engineering College",
+        "Branch / Department": result.branch,
+        "Year of Passing": isLocalUser ? activeCandidate.yearOfPassing : "2026",
+        "Questions Answered": result.answered,
+        "Percentage Score": result.score,
+        "Proctoring Warnings": result.warnings,
+        "Submission Mode": result.submission,
+        "Reference ID": result.referenceId,
+        "Submitted Date/Time": result.date || new Date().toLocaleString(),
+      };
+    });
+
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      
+      // Auto-fit column widths
+      const maxLens = {};
+      dataToExport.forEach(row => {
+        Object.keys(row).forEach(key => {
+          const valLen = String(row[key] || "").length;
+          const keyLen = key.length;
+          maxLens[key] = Math.max(maxLens[key] || 0, valLen, keyLen);
+        });
+      });
+      worksheet["!cols"] = Object.keys(maxLens).map(key => ({ wch: maxLens[key] + 3 }));
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Aptitude Results");
+      
+      XLSX.writeFile(workbook, "CampusDrive_Aptitude_Results.xlsx");
+      triggerToast("Excel report exported successfully!");
+    } catch (err) {
+      console.error("Error exporting report to Excel:", err);
+      triggerToast("Failed to export Excel report.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col lg:flex-row text-sans select-none">
       
@@ -508,7 +555,15 @@ export function AdminDashboard() {
         {/* Tab 2: Completed Results */}
         {activeTab === "results" && (
           <div className="space-y-4">
-            <h3 className="text-white font-extrabold text-xl">Completed Submissions Logs</h3>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h3 className="text-white font-extrabold text-xl">Completed Submissions Logs</h3>
+              <button
+                onClick={exportResultsToExcel}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/10 flex items-center gap-2 cursor-pointer"
+              >
+                <Award className="w-4 h-4" /> Export Report to Excel
+              </button>
+            </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
