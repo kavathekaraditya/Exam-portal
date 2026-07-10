@@ -4,6 +4,8 @@ import { examQuestions } from "../mocks/examData";
 import { useExamSecurity } from "../hooks/useExamSecurity";
 import { SecurityWrapper } from "./SecurityWrapper";
 import { Clock, CheckCircle, ChevronLeft, ChevronRight, Bookmark, CircleDot, Shield, RefreshCw, Send, AlertTriangle } from "lucide-react";
+import { db } from "../firebase";
+import { doc, updateDoc } from "firebase/firestore";
 
 export function ExamPage() {
   const navigate = useNavigate();
@@ -87,28 +89,60 @@ export function ExamPage() {
   }, [navigate]);
 
   // Submission handler
-  const handleFinalSubmit = useCallback((reason = "Manual Submission") => {
+  const handleFinalSubmit = useCallback(async (reason = "Manual Submission") => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     
+    const referenceId = "REF-" + Math.floor(100000 + Math.random() * 900000);
+    
+    // Calculate final score
+    let correctCount = 0;
+    questions.forEach((q, idx) => {
+      if (selectedAnswers[idx] === q.correctAnswer) {
+        correctCount++;
+      }
+    });
+    const scorePercentage = Math.round((correctCount / (questions.length || 10)) * 100) + "%";
+
+    let finishedSession = null;
+
     // Update local storage to lock out the student
     const sessionStr = localStorage.getItem("exam_session");
     if (sessionStr) {
       const session = JSON.parse(sessionStr);
-      const referenceId = "REF-" + Math.floor(100000 + Math.random() * 900000);
-      
-      const finishedSession = {
+      finishedSession = {
         ...session,
         examFinished: true,
         answers: selectedAnswers,
         markedQuestions,
         timeLeft: 0,
+        warnings,
         submissionReason: reason,
         referenceId,
+        score: scorePercentage,
         submittedAt: new Date().toISOString(),
       };
-      
       localStorage.setItem("exam_session", JSON.stringify(finishedSession));
+    }
+
+    // Sync finished session state to Cloud Firestore
+    if (student) {
+      try {
+        const sessionDocRef = doc(db, "exam_sessions", student.id);
+        await updateDoc(sessionDocRef, {
+          examFinished: true,
+          answers: selectedAnswers,
+          markedQuestions,
+          timeLeft: 0,
+          warnings,
+          submissionReason: reason,
+          referenceId,
+          score: scorePercentage,
+          submittedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error("Firestore final submission update failed:", err);
+      }
     }
 
     // Attempt to exit fullscreen on successful finish
@@ -118,7 +152,7 @@ export function ExamPage() {
 
     setIsExamActive(false);
     navigate("/success", { replace: true });
-  }, [isSubmitting, selectedAnswers, markedQuestions, navigate]);
+  }, [isSubmitting, selectedAnswers, markedQuestions, navigate, student, questions, warnings]);
 
   // Instantiate security hook
   const {
@@ -134,7 +168,7 @@ export function ExamPage() {
     handleFinalSubmit(`Auto-Submitted: Security Violations Limit Exceeded (${reason})`);
   });
 
-  // Keep track of warnings in session storage
+  // Keep track of warnings in session storage & Firestore
   useEffect(() => {
     if (student && isExamActive) {
       const session = JSON.parse(localStorage.getItem("exam_session"));
@@ -142,6 +176,12 @@ export function ExamPage() {
         session.warnings = warnings;
         localStorage.setItem("exam_session", JSON.stringify(session));
       }
+      
+      // Update warning count in Firestore
+      const sessionDocRef = doc(db, "exam_sessions", student.id);
+      updateDoc(sessionDocRef, { warnings }).catch(err => {
+        console.error("Failed to sync warnings to Firestore:", err);
+      });
     }
   }, [warnings, student, isExamActive]);
 
@@ -212,9 +252,20 @@ export function ExamPage() {
     setSaveStatus("Saving...");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     
-    saveTimeoutRef.current = setTimeout(() => {
+    saveTimeoutRef.current = setTimeout(async () => {
+      // Sync answers to Firestore
+      if (student) {
+        try {
+          const sessionDocRef = doc(db, "exam_sessions", student.id);
+          await updateDoc(sessionDocRef, { 
+            answers: updatedAnswers,
+            visitedQuestions
+          });
+        } catch (err) {
+          console.error("Failed to auto-save answers to Firestore:", err);
+        }
+      }
       setSaveStatus("Changes Saved to Cloud");
-      // Simulate backend save update delay visual
       setTimeout(() => {
         setSaveStatus("Saved");
       }, 1000);
@@ -244,7 +295,17 @@ export function ExamPage() {
     }
 
     setSaveStatus("Saving...");
-    setTimeout(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (student) {
+        try {
+          const sessionDocRef = doc(db, "exam_sessions", student.id);
+          await updateDoc(sessionDocRef, { answers: updatedAnswers });
+        } catch (err) {
+          console.error("Failed to auto-save cleared selection to Firestore:", err);
+        }
+      }
       setSaveStatus("Changes Saved to Cloud");
       setTimeout(() => setSaveStatus("Saved"), 1000);
     }, 500);

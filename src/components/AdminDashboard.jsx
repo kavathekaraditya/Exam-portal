@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { examQuestions } from "../mocks/examData";
 import { Shield, Eye, BarChart3, ListOrdered, FilePlus, UserCheck, ShieldAlert, Award, FileQuestion, Trash2, Home, LogOut } from "lucide-react";
 import * as XLSX from "xlsx";
+import { db } from "../firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -33,9 +35,13 @@ export function AdminDashboard() {
   });
 
   const [toast, setToast] = useState("");
-
-  // Re-fetch current student session if writing
   const [activeCandidate, setActiveCandidate] = useState(null);
+  
+  // Real-time Firestore sync states
+  const [liveStudents, setLiveStudents] = useState([]);
+  const [completedResults, setCompletedResults] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState("All");
+  const [availableBatches, setAvailableBatches] = useState(["All"]);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem("exam_session");
@@ -49,123 +55,151 @@ export function AdminDashboard() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  // Mock Live Candidates data
-  const mockLiveStudents = [
-    {
-      id: "live_1",
-      fullName: "Aniket Sharma",
-      rollNumber: "CS2022045",
-      branch: "Computer Science & Engineering",
-      progress: "8/10",
-      warnings: 1,
-      status: "Active",
-      lastUpdated: "Just now",
-    },
-    {
-      id: "live_2",
-      fullName: "Rohan Varma",
-      rollNumber: "ME2022102",
-      branch: "Mechanical Engineering",
-      progress: "4/10",
-      warnings: 3,
-      status: "Critical Focus Warning",
-      lastUpdated: "1m ago",
-    },
-    {
-      id: "live_3",
-      fullName: "Sneha Patel",
-      rollNumber: "EC2022012",
-      branch: "Electronics & Communication Engineering",
-      progress: "10/10",
-      warnings: 0,
-      status: "Reviewing",
-      lastUpdated: "2m ago",
-    },
-  ];
-
-  // If a student is currently taking the test locally, merge them into live monitor
-  if (activeCandidate && !activeCandidate.examFinished && activeCandidate.examStarted) {
-    const answeredCount = Object.keys(activeCandidate.answers || {}).length;
-    mockLiveStudents.unshift({
-      id: activeCandidate.id,
-      fullName: `${activeCandidate.fullName} (You)`,
-      rollNumber: activeCandidate.rollNumber,
-      branch: activeCandidate.branch,
-      progress: `${answeredCount}/10`,
-      warnings: activeCandidate.warnings || 0,
-      status: "Active Test Session",
-      lastUpdated: "Just now",
-    });
-  }
-
-  // Mock Completed Results
-  const mockCompletedResults = [
-    {
-      id: "res_1",
-      fullName: "Kabir Mehta",
-      rollNumber: "CS2022031",
-      branch: "Computer Science & Engineering",
-      answered: "10/10",
-      score: "90%",
-      warnings: 0,
-      submission: "Manual Submit",
-      referenceId: "REF-983842",
-      date: "Today, 11:30 AM",
-    },
-    {
-      id: "res_2",
-      fullName: "Pooja Hegde",
-      rollNumber: "IT2022088",
-      branch: "Information Technology",
-      answered: "10/10",
-      score: "70%",
-      warnings: 2,
-      submission: "Manual Submit",
-      referenceId: "REF-294810",
-      date: "Today, 10:15 AM",
-    },
-    {
-      id: "res_3",
-      fullName: "Vikram Sen",
-      rollNumber: "EE2022056",
-      branch: "Electrical & Electronics Engineering",
-      answered: "6/10",
-      score: "40%",
-      warnings: 4,
-      submission: "Auto-Submitted (Violations Limit)",
-      referenceId: "REF-109283",
-      date: "Yesterday, 3:45 PM",
-    },
-  ];
-
-  // Add current active candidate if they have finished the test
-  if (activeCandidate && activeCandidate.examFinished) {
-    const answeredCount = Object.keys(activeCandidate.answers || {}).length;
+  // Listen to exam_sessions updates in real-time
+  useEffect(() => {
+    const sessionsRef = collection(db, "exam_sessions");
     
-    // Simple mock grading (e.g. check answers against mock data)
-    let correct = 0;
-    currentQuestions.forEach((q, idx) => {
-      const selected = activeCandidate.answers[idx];
-      if (selected === q.correctAnswer) {
-        correct++;
+    const unsubscribe = onSnapshot(sessionsRef, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Sort by registered date descending
+      docs.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
+
+      const liveList = [];
+      const completedList = [];
+      const batches = new Set();
+
+      docs.forEach(session => {
+        if (session.accessCode) {
+          batches.add(session.accessCode.trim().toUpperCase());
+        }
+
+        const answeredCount = Object.keys(session.answers || {}).length;
+
+        if (session.examFinished) {
+          completedList.push({
+            id: session.id,
+            fullName: session.fullName,
+            rollNumber: session.rollNumber,
+            branch: session.branch,
+            email: session.email,
+            phone: session.phone,
+            college: session.college,
+            yearOfPassing: session.yearOfPassing,
+            answered: `${answeredCount}/${currentQuestions.length}`,
+            score: session.score || "0%",
+            warnings: session.warnings || 0,
+            submission: session.submissionReason || "Manual Submit",
+            referenceId: session.referenceId || "REF-XXXXXX",
+            date: session.submittedAt 
+              ? new Date(session.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ", " + new Date(session.submittedAt).toLocaleDateString()
+              : "N/A",
+            accessCode: (session.accessCode || "").trim().toUpperCase()
+          });
+        } else {
+          let statusText = "Active";
+          if (session.warnings >= 3) statusText = "Critical Focus Warning";
+          else if (session.warnings > 0) statusText = "Focus Warned";
+
+          liveList.push({
+            id: session.id,
+            fullName: session.fullName,
+            rollNumber: session.rollNumber,
+            branch: session.branch,
+            progress: `${answeredCount}/${currentQuestions.length}`,
+            warnings: session.warnings || 0,
+            status: statusText,
+            lastUpdated: "Live",
+            accessCode: (session.accessCode || "").trim().toUpperCase()
+          });
+        }
+      });
+
+      // Fallback: If no records are found in Firestore, populate with default mock data
+      if (docs.length === 0) {
+        liveList.push(
+          {
+            id: "live_1",
+            fullName: "Aniket Sharma",
+            rollNumber: "CS2022045",
+            branch: "Computer Science & Engineering",
+            progress: "8/10",
+            warnings: 1,
+            status: "Active",
+            lastUpdated: "Just now",
+            accessCode: "CAMPUS2026"
+          },
+          {
+            id: "live_2",
+            fullName: "Rohan Varma",
+            rollNumber: "ME2022102",
+            branch: "Mechanical Engineering",
+            progress: "4/10",
+            warnings: 3,
+            status: "Critical Focus Warning",
+            lastUpdated: "1m ago",
+            accessCode: "CAMPUS2026"
+          }
+        );
+
+        completedList.push(
+          {
+            id: "res_1",
+            fullName: "Kabir Mehta",
+            rollNumber: "CS2022031",
+            branch: "Computer Science & Engineering",
+            email: "kabir.mehta@college.edu",
+            phone: "9876543210",
+            college: "Government Engineering College",
+            yearOfPassing: "2026",
+            answered: "10/10",
+            score: "90%",
+            warnings: 0,
+            submission: "Manual Submit",
+            referenceId: "REF-983842",
+            date: "Today, 11:30 AM",
+            accessCode: "CAMPUS2026"
+          },
+          {
+            id: "res_2",
+            fullName: "Pooja Hegde",
+            rollNumber: "IT2022088",
+            branch: "Information Technology",
+            email: "pooja.hegde@college.edu",
+            phone: "9876543211",
+            college: "Government Engineering College",
+            yearOfPassing: "2026",
+            answered: "10/10",
+            score: "70%",
+            warnings: 2,
+            submission: "Manual Submit",
+            referenceId: "REF-294810",
+            date: "Today, 10:15 AM",
+            accessCode: "CAMPUS2026"
+          }
+        );
+        batches.add("CAMPUS2026");
       }
+
+      setLiveStudents(liveList);
+      setCompletedResults(completedList);
+      setAvailableBatches(["All", ...Array.from(batches)]);
+    }, (err) => {
+      console.error("Firestore onSnapshot error:", err);
     });
 
-    const scorePercentage = Math.round((correct / currentQuestions.length) * 100) + "%";
+    return () => unsubscribe();
+  }, [currentQuestions]);
 
-    mockCompletedResults.unshift({
-      id: activeCandidate.id,
-      fullName: `${activeCandidate.fullName} (You)`,
-      rollNumber: activeCandidate.rollNumber,
-      branch: activeCandidate.branch,
-      answered: `${answeredCount}/10`,
-      score: scorePercentage,
-      warnings: activeCandidate.warnings || 0,
-      submission: activeCandidate.submissionReason || "Manual Submit",
-      referenceId: activeCandidate.referenceId || "REF-XXXXXX",
-      date: new Date(activeCandidate.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ", Today",
-    });
-  }
+  const filteredResults = selectedBatch === "All"
+    ? completedResults
+    : completedResults.filter(r => r.accessCode === selectedBatch);
+
+  const avgScore = completedResults.length > 0
+    ? Math.round(completedResults.reduce((sum, res) => sum + parseInt(res.score || 0), 0) / completedResults.length) + "%"
+    : "0%";
+
+
 
   // Handle Question Creation
   const handleOptionChange = (idx, value) => {
@@ -316,25 +350,29 @@ export function AdminDashboard() {
 
   const exportResultsToExcel = () => {
     // Compile full reports (Registration details + Assessment marks)
-    const dataToExport = mockCompletedResults.map((result) => {
-      const isLocalUser = activeCandidate && result.id === activeCandidate.id;
-      
+    const dataToExport = filteredResults.map((result) => {
       return {
-        "Candidate Name": result.fullName.replace(" (You)", ""),
+        "Candidate Name": result.fullName,
         "Roll Number": result.rollNumber,
-        "Email Address": isLocalUser ? activeCandidate.email : `${result.fullName.toLowerCase().replace(/\s/g, "")}@college.edu`,
-        "Phone Number": isLocalUser ? activeCandidate.phone : "9876543210",
-        "Institution / College": isLocalUser ? activeCandidate.college : "Government Engineering College",
+        "Email Address": result.email || "n/a",
+        "Phone Number": result.phone || "n/a",
+        "Institution / College": result.college || "n/a",
         "Branch / Department": result.branch,
-        "Year of Passing": isLocalUser ? activeCandidate.yearOfPassing : "2026",
+        "Year of Passing": result.yearOfPassing || "n/a",
         "Questions Answered": result.answered,
         "Percentage Score": result.score,
         "Proctoring Warnings": result.warnings,
         "Submission Mode": result.submission,
         "Reference ID": result.referenceId,
-        "Submitted Date/Time": result.date || new Date().toLocaleString(),
+        "Submitted Date/Time": result.date,
+        "Batch / Access Code": result.accessCode || "N/A"
       };
     });
+
+    if (dataToExport.length === 0) {
+      triggerToast("No records available to export for this batch!");
+      return;
+    }
 
     try {
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -351,10 +389,12 @@ export function AdminDashboard() {
       worksheet["!cols"] = Object.keys(maxLens).map(key => ({ wch: maxLens[key] + 3 }));
 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Aptitude Results");
+      const sheetName = selectedBatch === "All" ? "All Batches" : `Batch_${selectedBatch}`;
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
       
-      XLSX.writeFile(workbook, "CampusDrive_Aptitude_Results.xlsx");
-      triggerToast("Excel report exported successfully!");
+      const fileName = selectedBatch === "All" ? "CampusDrive_All_Results.xlsx" : `CampusDrive_${selectedBatch}_Results.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      triggerToast(`Excel report for batch '${selectedBatch}' exported successfully!`);
     } catch (err) {
       console.error("Error exporting report to Excel:", err);
       triggerToast("Failed to export Excel report.");
@@ -452,7 +492,7 @@ export function AdminDashboard() {
             </div>
             <div>
               <span className="text-slate-400 text-xs block font-medium">Total Registered</span>
-              <strong className="text-white text-2xl font-bold">42</strong>
+              <strong className="text-white text-2xl font-bold">{liveStudents.length + completedResults.length}</strong>
             </div>
           </div>
 
@@ -462,7 +502,7 @@ export function AdminDashboard() {
             </div>
             <div>
               <span className="text-slate-400 text-xs block font-medium">Active Test Takers</span>
-              <strong className="text-white text-2xl font-bold">{mockLiveStudents.length}</strong>
+              <strong className="text-white text-2xl font-bold">{liveStudents.length}</strong>
             </div>
           </div>
 
@@ -473,7 +513,7 @@ export function AdminDashboard() {
             <div>
               <span className="text-slate-400 text-xs block font-medium">Security Alerts</span>
               <strong className="text-white text-2xl font-bold">
-                {mockLiveStudents.reduce((sum, stu) => sum + (stu.warnings > 0 ? 1 : 0), 0) + 1}
+                {liveStudents.reduce((sum, stu) => sum + (stu.warnings > 0 ? 1 : 0), 0)}
               </strong>
             </div>
           </div>
@@ -484,7 +524,7 @@ export function AdminDashboard() {
             </div>
             <div>
               <span className="text-slate-400 text-xs block font-medium">Average Score</span>
-              <strong className="text-white text-2xl font-bold">68.5%</strong>
+              <strong className="text-white text-2xl font-bold">{avgScore}</strong>
             </div>
           </div>
 
@@ -516,7 +556,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {mockLiveStudents.map((student) => (
+                    {liveStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-slate-800/30 transition">
                         <td className="px-6 py-4">
                           <div className="font-bold text-white">{student.fullName}</div>
@@ -556,13 +596,33 @@ export function AdminDashboard() {
         {activeTab === "results" && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <h3 className="text-white font-extrabold text-xl">Completed Submissions Logs</h3>
-              <button
-                onClick={exportResultsToExcel}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/10 flex items-center gap-2 cursor-pointer"
-              >
-                <Award className="w-4 h-4" /> Export Report to Excel
-              </button>
+              <div className="space-y-1">
+                <h3 className="text-white font-extrabold text-xl">Completed Submissions Logs</h3>
+                <p className="text-slate-400 text-xs">View scores, answers, warnings, and export batch reports.</p>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                {/* Batch Filter Dropdown */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider whitespace-nowrap">Filter Batch:</span>
+                  <select
+                    value={selectedBatch}
+                    onChange={(e) => setSelectedBatch(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-semibold focus:border-indigo-500 outline-none cursor-pointer"
+                  >
+                    {availableBatches.map(batch => (
+                      <option key={batch} value={batch}>{batch}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={exportResultsToExcel}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-emerald-600/10 flex items-center gap-2 cursor-pointer"
+                >
+                  <Award className="w-4 h-4" /> Export Batch to Excel
+                </button>
+              </div>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
@@ -580,7 +640,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {mockCompletedResults.map((result) => {
+                    {filteredResults.map((result) => {
                       const scoreVal = parseInt(result.score);
                       const isFailed = scoreVal < 50;
                       return (

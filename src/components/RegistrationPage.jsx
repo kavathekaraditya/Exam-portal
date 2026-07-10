@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Mail, Phone, GraduationCap, BookOpen, Calendar, Hash, Key, Lock, ArrowRight } from "lucide-react";
+import { db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 export function RegistrationPage() {
   const navigate = useNavigate();
@@ -78,37 +80,46 @@ export function RegistrationPage() {
     if (!formData.yearOfPassing) newErrors.yearOfPassing = "Year of passing is required";
     if (!formData.rollNumber.trim()) newErrors.rollNumber = "Roll number is required";
     if (!formData.accessCode.trim()) {
-      newErrors.accessCode = "Access code is required";
-    } else if (formData.accessCode !== "CAMPUS2026") {
-      newErrors.accessCode = "Invalid access code (Try CAMPUS2026)";
+      newErrors.accessCode = "Access code / Batch Code is required";
+    } else if (formData.accessCode.trim().length < 3) {
+      newErrors.accessCode = "Access code must be at least 3 characters long";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
     setLoading(true);
-    // Simulate API registration call
-    setTimeout(() => {
-      setLoading(false);
-      // Create session
-      const userSession = {
-        id: "usr_" + Math.random().toString(36).substr(2, 9),
-        ...formData,
-        registeredAt: new Date().toISOString(),
-        examToken: "tok_" + Math.random().toString(36).substr(2, 24),
-        violations: 0,
-        examStarted: false,
-        examFinished: false,
-        answers: {},
-      };
+    
+    const sessionId = "usr_" + Math.random().toString(36).substr(2, 9);
+    const userSession = {
+      id: sessionId,
+      ...formData,
+      registeredAt: new Date().toISOString(),
+      examToken: "tok_" + Math.random().toString(36).substr(2, 24),
+      violations: 0,
+      examStarted: false,
+      examFinished: false,
+      answers: {},
+    };
+
+    try {
+      // Save session info to Cloud Firestore
+      await setDoc(doc(db, "exam_sessions", sessionId), userSession);
       
+      // Save to localStorage for active candidate rehydration
       localStorage.setItem("exam_session", JSON.stringify(userSession));
+      setLoading(false);
       navigate("/rules");
-    }, 1500);
+    } catch (err) {
+      console.error("Firebase registration failed, using localStorage fallback:", err);
+      localStorage.setItem("exam_session", JSON.stringify(userSession));
+      setLoading(false);
+      navigate("/rules");
+    }
   };
 
   return (
