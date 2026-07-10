@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Copy, AlertTriangle, ShieldCheck, ExternalLink, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
 
 export function SuccessPage() {
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   // Re-push history states to block browser back button navigation
   useEffect(() => {
@@ -37,18 +36,6 @@ export function SuccessPage() {
     setStudent(session);
   }, [navigate]);
 
-  const copyToClipboard = () => {
-    if (!student) return;
-    navigator.clipboard.writeText(student.referenceId || "");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleRegisterNew = () => {
-    localStorage.removeItem("exam_session");
-    navigate("/", { replace: true });
-  };
-
   if (!student) return null;
 
   const answeredCount = Object.keys(student.answers || {}).length;
@@ -79,28 +66,6 @@ export function SuccessPage() {
           <p className="text-slate-400 text-sm">
             Thank you, <span className="text-slate-200 font-semibold">{student.fullName}</span>. Your test responses have been logged and locked.
           </p>
-        </div>
-
-        {/* Access Code Reference Box */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Reference ID</span>
-          
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-2xl font-mono font-bold text-indigo-400 tracking-wider">
-              {student.referenceId}
-            </span>
-            <button
-              onClick={copyToClipboard}
-              className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition active:scale-95 cursor-pointer"
-              title="Copy Reference ID"
-            >
-              {copied ? (
-                <span className="text-xs text-emerald-400 font-semibold px-1">Copied!</span>
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </button>
-          </div>
         </div>
 
         {/* Security / Submission Meta Grid */}
@@ -136,25 +101,8 @@ export function SuccessPage() {
 
         </div>
 
-        {/* Footer Navigation Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <button
-            onClick={handleRegisterNew}
-            className="w-full sm:w-auto px-5 py-3 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-400 hover:text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Re-Register Candidate
-          </button>
-
-          <button
-            onClick={() => navigate("/admin")}
-            className="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/10 transition flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <span>View Admin Panel</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
       </div>
     </div>
   );
 }
+
