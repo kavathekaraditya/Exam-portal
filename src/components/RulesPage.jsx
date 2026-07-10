@@ -63,49 +63,49 @@ export function RulesPage() {
         {/* Rules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           
-          <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 shrink-0">
+          <div className="p-5 rounded-2xl border border-slate-200 flex items-start gap-4" style={{ backgroundColor: '#E6E6FA' }}>
+            <div className="p-3 bg-indigo-600/10 rounded-xl text-indigo-700 shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-sm">Exam Duration</h3>
-              <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-sm">Exam Duration</h3>
+              <p className="text-slate-700 text-xs mt-1 leading-relaxed">
                 You have exactly 60 minutes to complete the test. A persistent countdown timer is shown at the top.
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 shrink-0">
+          <div className="p-5 rounded-2xl border border-slate-200 flex items-start gap-4" style={{ backgroundColor: '#E6E6FA' }}>
+            <div className="p-3 bg-indigo-600/10 rounded-xl text-indigo-700 shrink-0">
               <HelpCircle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-sm">Question Count</h3>
-              <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-sm">Question Count</h3>
+              <p className="text-slate-700 text-xs mt-1 leading-relaxed">
                 The test contains 10 multiple choice questions. You can toggle between questions using the sidebar palette.
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4">
-            <div className="p-3 bg-red-500/10 rounded-xl text-red-400 shrink-0">
+          <div className="p-5 rounded-2xl border border-slate-200 flex items-start gap-4" style={{ backgroundColor: '#E6E6FA' }}>
+            <div className="p-3 bg-red-600/10 rounded-xl text-red-700 shrink-0">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-sm">Proctoring Constraints</h3>
-              <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-sm">Proctoring Constraints</h3>
+              <p className="text-slate-700 text-xs mt-1 leading-relaxed">
                 Switching tabs, leaving the window focus, or exiting full screen is prohibited. You are allowed at most 3 violations.
               </p>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 shrink-0">
+          <div className="p-5 rounded-2xl border border-slate-200 flex items-start gap-4" style={{ backgroundColor: '#E6E6FA' }}>
+            <div className="p-3 bg-indigo-600/10 rounded-xl text-indigo-700 shrink-0">
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-sm">Interaction Controls</h3>
-              <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+              <h3 className="font-bold text-slate-900 text-sm">Interaction Controls</h3>
+              <p className="text-slate-700 text-xs mt-1 leading-relaxed">
                 Copy, paste, cut, and right-click actions are disabled. Auto-save triggers automatically as you make choices.
               </p>
             </div>
