@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ShieldCheck, UserPlus } from "lucide-react";
 
 export function SuccessPage() {
   const navigate = useNavigate();
@@ -35,6 +35,11 @@ export function SuccessPage() {
 
     setStudent(session);
   }, [navigate]);
+
+  const handleRegisterNew = () => {
+    localStorage.removeItem("exam_session");
+    navigate("/", { replace: true });
+  };
 
   if (!student) return null;
 
@@ -99,6 +104,17 @@ export function SuccessPage() {
             )}
           </div>
 
+        </div>
+
+        {/* Action Footer */}
+        <div className="pt-4 border-t border-slate-900">
+          <button
+            onClick={handleRegisterNew}
+            className="w-full py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] transition-all text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer text-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Register Another Student</span>
+          </button>
         </div>
 
       </div>
