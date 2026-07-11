@@ -510,42 +510,44 @@ export function ExamPage() {
 
             {/* Action Footer */}
             <footer className="mt-8 pt-6 border-t border-slate-900 flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button
                   onClick={() => navigateToQuestion(currentIdx - 1)}
                   disabled={currentIdx === 0}
-                  className="px-5 py-3 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 disabled:opacity-30 disabled:hover:bg-transparent text-slate-300 hover:text-white font-semibold rounded-xl text-sm flex items-center gap-1 transition cursor-pointer"
+                  className="px-6 py-3.5 border-2 border-indigo-500/30 text-indigo-400 hover:bg-indigo-950/30 disabled:opacity-30 disabled:hover:bg-transparent disabled:border-slate-800 disabled:text-slate-500 font-bold rounded-xl text-base flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Previous
+                  <ChevronLeft className="w-5 h-5" /> Previous
                 </button>
 
                 <button
                   onClick={() => navigateToQuestion(currentIdx + 1)}
                   disabled={currentIdx === totalQuestions - 1}
-                  className="px-5 py-3 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 disabled:opacity-30 disabled:hover:bg-transparent text-slate-300 hover:text-white font-semibold rounded-xl text-sm flex items-center gap-1 transition cursor-pointer"
+                  className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white font-bold rounded-xl text-base flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
                 >
-                  Next <ChevronRight className="w-4 h-4" />
+                  Next <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
 
               <button
                 onClick={toggleMarkForReview}
-                className={`px-5 py-3 border rounded-xl text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                className={`px-6 py-3.5 border-2 rounded-xl text-base font-bold flex items-center gap-2 transition-all cursor-pointer ${
                   isMarked
-                    ? "bg-indigo-600/10 border-indigo-500/50 text-indigo-400 hover:bg-indigo-600/20"
-                    : "border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-300 hover:text-white"
+                    ? "bg-indigo-600/25 border-indigo-500 text-indigo-400 hover:bg-indigo-600/35"
+                    : "bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white"
                 }`}
               >
-                <Bookmark className="w-4 h-4 fill-current" />
+                <Bookmark className={`w-5 h-5 ${isMarked ? "fill-indigo-400 text-indigo-400" : ""}`} />
                 <span>{isMarked ? "Marked for Review" : "Mark for Review"}</span>
               </button>
 
-              <button
-                onClick={() => setShowSubmitModal(true)}
-                className="px-7 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 flex items-center gap-2 cursor-pointer text-sm"
-              >
-                <Send className="w-4 h-4" /> Submit Exam
-              </button>
+              {currentIdx === totalQuestions - 1 && (
+                <button
+                  onClick={() => setShowSubmitModal(true)}
+                  className="px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all text-white font-bold rounded-xl shadow-lg shadow-emerald-600/25 flex items-center gap-2 cursor-pointer text-base"
+                >
+                  <Send className="w-5 h-5" /> Submit Exam
+                </button>
+              )}
             </footer>
 
           </main>
