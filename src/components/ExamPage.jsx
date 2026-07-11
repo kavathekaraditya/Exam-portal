@@ -66,25 +66,43 @@ export function ExamPage() {
       setVisitedQuestions(session.visitedQuestions);
     }
 
-    // Load question pool from local storage or initialize with default mock ones
-    let activePool = examQuestions;
-    const storedPool = localStorage.getItem("exam_question_pool");
-    if (storedPool) {
-      try {
-        activePool = JSON.parse(storedPool);
-      } catch (e) {
-        console.error("Error parsing stored question pool:", e);
+    // Load or generate candidate-specific shuffled questions pool
+    let activeQuestions = session.questions;
+
+    if (!activeQuestions) {
+      // Load question pool from local storage or initialize with default mock ones
+      let activePool = examQuestions;
+      const storedPool = localStorage.getItem("exam_question_pool");
+      if (storedPool) {
+        try {
+          activePool = JSON.parse(storedPool);
+        } catch (e) {
+          console.error("Error parsing stored question pool:", e);
+        }
+      } else {
+        localStorage.setItem("exam_question_pool", JSON.stringify(examQuestions));
       }
-    } else {
-      localStorage.setItem("exam_question_pool", JSON.stringify(examQuestions));
+
+      // Shuffle the questions list
+      const shuffledQuestions = shuffleArray(activePool);
+
+      // Shuffle the options for each question
+      activeQuestions = shuffledQuestions.map((q) => ({
+        ...q,
+        options: shuffleArray(q.options),
+      }));
+
+      // Persist the shuffled questions to localStorage and sync with Firestore
+      session.questions = activeQuestions;
+      localStorage.setItem("exam_session", JSON.stringify(session));
+
+      const sessionDocRef = doc(db, "exam_sessions", session.id);
+      updateDoc(sessionDocRef, { questions: activeQuestions }).catch((err) => {
+        console.error("Failed to sync shuffled questions to Firestore:", err);
+      });
     }
 
-    // Shuffle options once
-    const shuffled = activePool.map((q) => ({
-      ...q,
-      options: shuffleArray(q.options),
-    }));
-    setQuestions(shuffled);
+    setQuestions(activeQuestions);
     setIsExamActive(true);
   }, [navigate]);
 
