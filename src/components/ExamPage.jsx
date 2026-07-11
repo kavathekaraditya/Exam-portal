@@ -88,6 +88,25 @@ export function ExamPage() {
     setIsExamActive(true);
   }, [navigate]);
 
+  // Ref to store the latest definition of handleFinalSubmit to avoid TDZ and stale closures
+  const handleFinalSubmitRef = useRef();
+
+  // Stable callback for security violation limit exceeded
+  const onViolationLimitExceeded = useCallback((reason) => {
+    handleFinalSubmitRef.current?.(`Auto-Submitted: Security Violations Limit Exceeded (${reason})`);
+  }, []);
+
+  // Instantiate security hook first to declare 'warnings' before it is used in handleFinalSubmit's dependency array
+  const {
+    warnings,
+    isFullscreen,
+    lastViolationReason,
+    showWarningModal,
+    setShowWarningModal,
+    enterFullscreen,
+    setWarnings
+  } = useExamSecurity(isExamActive, onViolationLimitExceeded);
+
   // Submission handler
   const handleFinalSubmit = useCallback(async (reason = "Manual Submission") => {
     if (isSubmitting) return;
@@ -154,19 +173,8 @@ export function ExamPage() {
     navigate("/success", { replace: true });
   }, [isSubmitting, selectedAnswers, markedQuestions, navigate, student, questions, warnings]);
 
-  // Instantiate security hook
-  const {
-    warnings,
-    isFullscreen,
-    lastViolationReason,
-    showWarningModal,
-    setShowWarningModal,
-    enterFullscreen,
-    setWarnings
-  } = useExamSecurity(isExamActive, (reason) => {
-    // Limits exceeded callback
-    handleFinalSubmit(`Auto-Submitted: Security Violations Limit Exceeded (${reason})`);
-  });
+  // Keep the ref up-to-date
+  handleFinalSubmitRef.current = handleFinalSubmit;
 
   // Keep track of warnings in session storage & Firestore
   useEffect(() => {
