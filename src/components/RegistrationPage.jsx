@@ -11,45 +11,37 @@ export function RegistrationPage() {
     fullName: "",
     email: "",
     phone: "",
-    college: "",
+    college: "D. Y. Patil Agriculture & Technical University, Talsande",
     branch: "",
     yearOfPassing: "",
     rollNumber: "",
-    accessCode: "",
+    accessCode: "DYP-2026",
   });
 
   const [errors, setErrors] = useState({});
 
   const colleges = [
-    "Indian Institute of Technology (IIT)",
-    "National Institute of Technology (NIT)",
-    "Birla Institute of Technology and Science (BITS)",
-    "Delhi Technological University (DTU)",
-    "Vellore Institute of Technology (VIT)",
-    "Manipal Institute of Technology (MIT)",
-    "Government Engineering College",
+    "D. Y. Patil Agriculture & Technical University, Talsande",
   ];
 
   const branches = [
-    "Computer Science & Engineering",
-    "Information Technology",
-    "Electronics & Communication Engineering",
-    "Electrical & Electronics Engineering",
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Chemical Engineering",
+    "B. Tech CSE",
+    "B. Tech AIML",
+    "B. Tech Data Science",
+    "MCA",
+    "BCA",
   ];
 
   const handleAutofill = () => {
     setFormData({
       fullName: "Jane Doe",
-      email: "jane.doe@nit.edu",
+      email: "jane.doe@dypatil.edu",
       phone: "9876543210",
-      college: "National Institute of Technology (NIT)",
-      branch: "Computer Science & Engineering",
+      college: "D. Y. Patil Agriculture & Technical University, Talsande",
+      branch: "B. Tech CSE",
       yearOfPassing: "2026",
       rollNumber: "CS2022095",
-      accessCode: "CAMPUS2026",
+      accessCode: "DYP-2026",
     });
     setErrors({});
   };
@@ -79,11 +71,6 @@ export function RegistrationPage() {
     if (!formData.branch) newErrors.branch = "Department/Branch is required";
     if (!formData.yearOfPassing) newErrors.yearOfPassing = "Year of passing is required";
     if (!formData.rollNumber.trim()) newErrors.rollNumber = "Roll number is required";
-    if (!formData.accessCode.trim()) {
-      newErrors.accessCode = "Access code / Batch Code is required";
-    } else if (formData.accessCode.trim().length < 3) {
-      newErrors.accessCode = "Access code must be at least 3 characters long";
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -93,7 +80,7 @@ export function RegistrationPage() {
     if (!validate()) return;
 
     setLoading(true);
-    
+
     const sessionId = "usr_" + Math.random().toString(36).substr(2, 9);
     const userSession = {
       id: sessionId,
@@ -109,7 +96,7 @@ export function RegistrationPage() {
     try {
       // Save session info to Cloud Firestore
       await setDoc(doc(db, "exam_sessions", sessionId), userSession);
-      
+
       // Save to localStorage for active candidate rehydration
       localStorage.setItem("exam_session", JSON.stringify(userSession));
       setLoading(false);
@@ -130,7 +117,7 @@ export function RegistrationPage() {
 
       {/* Main Container */}
       <div className="w-full max-w-4xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl relative border border-slate-800 z-10">
-        
+
         {/* Header */}
         <div className="text-center max-w-xl mx-auto mb-10 space-y-3">
           <div className="flex flex-wrap justify-center items-center gap-3 mb-2">
@@ -156,7 +143,7 @@ export function RegistrationPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Full Name */}
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -216,7 +203,6 @@ export function RegistrationPage() {
                 onChange={handleChange}
                 className={`w-full bg-slate-900 border ${errors.college ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none appearance-none`}
               >
-                <option value="">Select College</option>
                 {colleges.map((col, idx) => (
                   <option key={idx} value={col}>{col}</option>
                 ))}
@@ -275,23 +261,6 @@ export function RegistrationPage() {
                 className={`w-full bg-slate-900 border ${errors.rollNumber ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
               />
               {errors.rollNumber && <p className="text-red-500 text-xs">{errors.rollNumber}</p>}
-            </div>
-
-            {/* Access Code */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Key className="w-4 h-4 text-indigo-400" /> Exam Access Code
-              </label>
-              <input
-                type="text"
-                name="accessCode"
-                placeholder="CAMPUS2026"
-                value={formData.accessCode}
-                onChange={handleChange}
-                className={`w-full bg-slate-900 border ${errors.accessCode ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
-              />
-              {errors.accessCode && <p className="text-red-500 text-xs">{errors.accessCode}</p>}
-              <span className="text-[10px] text-slate-500">Demo Code: CAMPUS2026</span>
             </div>
 
           </div>
