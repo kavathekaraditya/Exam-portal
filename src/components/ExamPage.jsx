@@ -392,9 +392,7 @@ export function ExamPage() {
         {/* Header bar */}
         <header className="sticky top-0 z-30 bg-slate-900/90 border-b border-slate-800 backdrop-blur-md px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
-              CD
-            </div>
+            <img src="/itpllogo.png" alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white shadow-lg" />
             <div>
               <h2 className="text-white font-bold text-base leading-tight">Campus Aptitude Assessment</h2>
               <p className="text-slate-400 text-xs mt-0.5">Candidate: {student.fullName} ({student.rollNumber})</p>

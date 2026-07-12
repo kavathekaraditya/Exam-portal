@@ -49,6 +49,11 @@ export function SuccessPage() {
 
   return (
     <div className="min-h-screen py-12 px-4 flex flex-col justify-center items-center bg-slate-950 relative overflow-hidden">
+      {/* Logo in top left corner */}
+      <div className="absolute top-6 left-6 z-20">
+        <img src="/itpllogo.png" alt="ITPL Logo" className="h-12 md:h-16 w-auto object-contain rounded-xl" />
+      </div>
+
       {/* Decorative Orbs */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl" />

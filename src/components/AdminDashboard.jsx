@@ -418,9 +418,7 @@ export function AdminDashboard() {
           
           {/* Dashboard Header */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-600/30">
-              A
-            </div>
+            <img src="/itpllogo.png" alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white shadow-lg" />
             <div>
               <h2 className="text-white font-bold text-base leading-tight">Admin Console</h2>
               <span className="text-indigo-400 text-xs font-semibold tracking-wider uppercase">Proctor Control</span>
