@@ -157,7 +157,6 @@ export function RegistrationPage() {
               <input
                 type="text"
                 name="fullName"
-                placeholder="John Doe"
                 value={formData.fullName}
                 onChange={handleChange}
                 className={`w-full bg-slate-900 border ${errors.fullName ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
@@ -173,7 +172,6 @@ export function RegistrationPage() {
               <input
                 type="email"
                 name="email"
-                placeholder="johndoe@college.edu"
                 value={formData.email}
                 onChange={handleChange}
                 className={`w-full bg-slate-900 border ${errors.email ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
@@ -189,7 +187,6 @@ export function RegistrationPage() {
               <input
                 type="tel"
                 name="phone"
-                placeholder="9876543210"
                 value={formData.phone}
                 onChange={handleChange}
                 className={`w-full bg-slate-900 border ${errors.phone ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
@@ -242,7 +239,6 @@ export function RegistrationPage() {
               <input
                 type="number"
                 name="yearOfPassing"
-                placeholder="2026"
                 min="2020"
                 max="2035"
                 value={formData.yearOfPassing}
@@ -260,7 +256,6 @@ export function RegistrationPage() {
               <input
                 type="text"
                 name="rollNumber"
-                placeholder="CS2022095"
                 value={formData.rollNumber}
                 onChange={handleChange}
                 className={`w-full bg-slate-900 border ${errors.rollNumber ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}

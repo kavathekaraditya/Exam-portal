@@ -287,11 +287,11 @@ export function AdminDashboard() {
 
         // Map column indexes
         const qIdx = headers.findIndex(h => h.includes("question") || h.includes("statement") || h.includes("text"));
-        const opt1Idx = headers.findIndex(h => h.includes("option 1") || h.includes("option1") || h === "a" || h === "op1");
-        const opt2Idx = headers.findIndex(h => h.includes("option 2") || h.includes("option2") || h === "b" || h === "op2");
-        const opt3Idx = headers.findIndex(h => h.includes("option 3") || h.includes("option3") || h === "c" || h === "op3");
-        const opt4Idx = headers.findIndex(h => h.includes("option 4") || h.includes("option4") || h === "d" || h === "op4");
-        const ansIdx = headers.findIndex(h => h.includes("correct answer") || h.includes("answer") || h.includes("correct") || h === "correctanswer");
+        const opt1Idx = headers.findIndex(h => h.includes("option 1") || h.includes("option1") || h.includes("option a") || h.includes("optiona") || h === "a" || h === "op1" || h === "opt1" || h.includes("opt a") || h.includes("op a"));
+        const opt2Idx = headers.findIndex(h => h.includes("option 2") || h.includes("option2") || h.includes("option b") || h.includes("optionb") || h === "b" || h === "op2" || h === "opt2" || h.includes("opt b") || h.includes("op b"));
+        const opt3Idx = headers.findIndex(h => h.includes("option 3") || h.includes("option3") || h.includes("option c") || h.includes("optionc") || h === "c" || h === "op3" || h === "opt3" || h.includes("opt c") || h.includes("op c"));
+        const opt4Idx = headers.findIndex(h => h.includes("option 4") || h.includes("option4") || h.includes("option d") || h.includes("optiond") || h === "d" || h === "op4" || h === "opt4" || h.includes("opt d") || h.includes("op d"));
+        const ansIdx = headers.findIndex(h => h.includes("correct answer") || h.includes("answer") || h.includes("correct") || h === "correctanswer" || h === "ans" || h === "key");
         const catIdx = headers.findIndex(h => h.includes("category") || h === "cat");
 
         if (qIdx === -1 || opt1Idx === -1 || opt2Idx === -1 || opt3Idx === -1 || opt4Idx === -1 || ansIdx === -1) {
@@ -308,15 +308,32 @@ export function AdminDashboard() {
           const option2 = String(row[opt2Idx] || "").trim();
           const option3 = String(row[opt3Idx] || "").trim();
           const option4 = String(row[opt4Idx] || "").trim();
-          const correctAnswer = String(row[ansIdx] || "").trim();
+          const rawAnswer = String(row[ansIdx] || "").trim();
           const category = catIdx !== -1 && row[catIdx] ? String(row[catIdx]).trim() : "Quantitative";
 
-          if (!text || !option1 || !option2 || !option3 || !option4 || !correctAnswer) {
+          if (!text || !option1 || !option2 || !option3 || !option4 || !rawAnswer) {
             skippedCount++;
             return;
           }
 
           const options = [option1, option2, option3, option4];
+          let correctAnswer = rawAnswer;
+
+          // If answer is not already the exact option text, try resolving "A", "B", "C", "D" or "Option 1" or "1" to the option text
+          if (!options.includes(correctAnswer)) {
+            const cleanAns = correctAnswer.toLowerCase().replace(/[\s_-]/g, "");
+            if (cleanAns === "a" || cleanAns === "option1" || cleanAns === "1" || cleanAns === "op1") {
+              correctAnswer = option1;
+            } else if (cleanAns === "b" || cleanAns === "option2" || cleanAns === "2" || cleanAns === "op2") {
+              correctAnswer = option2;
+            } else if (cleanAns === "c" || cleanAns === "option3" || cleanAns === "3" || cleanAns === "op3") {
+              correctAnswer = option3;
+            } else if (cleanAns === "d" || cleanAns === "option4" || cleanAns === "4" || cleanAns === "op4") {
+              correctAnswer = option4;
+            }
+          }
+
+          // Double check that final resolved answer matches one of the options
           if (!options.includes(correctAnswer)) {
             skippedCount++;
             return;
