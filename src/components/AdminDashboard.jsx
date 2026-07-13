@@ -1,13 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { examQuestions } from "../mocks/examData";
-import { Shield, Eye, BarChart3, ListOrdered, FilePlus, UserCheck, ShieldAlert, Award, FileQuestion, Trash2, Home, LogOut } from "lucide-react";
+import { Shield, Eye, BarChart3, ListOrdered, FilePlus, UserCheck, ShieldAlert, Award, FileQuestion, Trash2, Home, LogOut, Lock, User } from "lucide-react";
 import * as XLSX from "xlsx";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem("admin_authenticated") === "true";
+  });
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (loginForm.username === "admin" && loginForm.password === "admin123") {
+      sessionStorage.setItem("admin_authenticated", "true");
+      setIsAuthenticated(true);
+      setLoginError("");
+    } else {
+      setLoginError("Invalid admin username or password");
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_authenticated");
+    setIsAuthenticated(false);
+  };
+
   const [activeTab, setActiveTab] = useState("monitor"); // "monitor" | "results" | "create"
   const [currentQuestions, setCurrentQuestions] = useState(() => {
     const stored = localStorage.getItem("exam_question_pool");
@@ -418,6 +440,86 @@ export function AdminDashboard() {
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen py-12 px-4 flex flex-col justify-center items-center bg-slate-950 relative overflow-hidden font-sans w-full">
+        {/* Logo in top left corner */}
+        <div className="absolute top-6 left-6 z-20">
+          <img src="/itpllogo.png" alt="ITPL Logo" className="h-12 md:h-16 w-auto object-contain rounded-xl" />
+        </div>
+
+        {/* Background Orbs */}
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-45 -left-45 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl" />
+
+        {/* Main Card Container */}
+        <div className="w-full max-w-md glass-panel rounded-3xl p-8 md:p-10 shadow-2xl relative border border-slate-800 z-10 space-y-8">
+          
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-600/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mx-auto animate-pulse">
+              <Shield className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Admin Console</h1>
+            <p className="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto">
+              Sign in with your administrator credentials to monitor live proctoring and manage test sessions.
+            </p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <User className="w-4 h-4 text-indigo-400" /> Username
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Lock className="w-4 h-4 text-indigo-400" /> Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none"
+                required
+              />
+            </div>
+
+            {loginError && (
+              <p className="text-red-500 text-xs font-semibold text-center">{loginError}</p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.99] transition-all text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer text-sm"
+            >
+              <span>Sign In</span>
+            </button>
+          </form>
+
+          <div className="text-center pt-2">
+            <button
+              onClick={() => navigate("/")}
+              className="text-xs text-slate-400 hover:text-white transition cursor-pointer"
+            >
+              Return to Candidate Registration
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col lg:flex-row text-sans select-none">
       
@@ -485,12 +587,18 @@ export function AdminDashboard() {
         </div>
 
         {/* Return buttons */}
-        <div className="pt-6 border-t border-slate-800 space-y-2.5">
+        <div className="pt-6 border-t border-slate-800 space-y-2">
           <button
             onClick={() => navigate("/")}
             className="w-full px-4 py-2.5 border border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-400 hover:text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Home className="w-3.5 h-3.5" /> Portal Homepage
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-2.5 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 hover:border-rose-500/40 text-rose-400 hover:text-rose-300 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Logout Dashboard
           </button>
         </div>
       </aside>
