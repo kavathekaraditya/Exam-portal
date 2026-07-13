@@ -15,7 +15,7 @@ export function RegistrationPage() {
     branch: "",
     yearOfPassing: "",
     rollNumber: "",
-    accessCode: "DYP-2026",
+    accessCode: "Batch 1",
   });
 
   const [errors, setErrors] = useState({});
@@ -41,7 +41,7 @@ export function RegistrationPage() {
       branch: "B. Tech CSE",
       yearOfPassing: "2026",
       rollNumber: "CS2022095",
-      accessCode: "DYP-2026",
+      accessCode: "Batch 1",
     });
     setErrors({});
   };
@@ -71,6 +71,7 @@ export function RegistrationPage() {
     if (!formData.branch) newErrors.branch = "Department/Branch is required";
     if (!formData.yearOfPassing) newErrors.yearOfPassing = "Year of passing is required";
     if (!formData.rollNumber.trim()) newErrors.rollNumber = "Roll number is required";
+    if (!formData.accessCode.trim()) newErrors.accessCode = "Batch / Slot is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -261,6 +262,21 @@ export function RegistrationPage() {
                 className={`w-full bg-slate-900 border ${errors.rollNumber ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
               />
               {errors.rollNumber && <p className="text-red-500 text-xs">{errors.rollNumber}</p>}
+            </div>
+
+            {/* Batch / Slot Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Hash className="w-4 h-4 text-indigo-400" /> Batch / Slot
+              </label>
+              <input
+                type="text"
+                name="accessCode"
+                value={formData.accessCode}
+                onChange={handleChange}
+                className={`w-full bg-slate-900 border ${errors.accessCode ? 'border-red-500' : 'border-slate-800'} focus:border-indigo-500 rounded-xl px-4 py-3 text-white transition-all outline-none`}
+              />
+              {errors.accessCode && <p className="text-red-500 text-xs">{errors.accessCode}</p>}
             </div>
 
           </div>

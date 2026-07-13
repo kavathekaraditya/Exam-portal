@@ -4,7 +4,7 @@ import { examQuestions } from "../mocks/examData";
 import { Shield, Eye, BarChart3, ListOrdered, FilePlus, UserCheck, ShieldAlert, Award, FileQuestion, Trash2, Home, LogOut, Lock, User } from "lucide-react";
 import * as XLSX from "xlsx";
 import { db } from "../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -43,10 +43,30 @@ export function AdminDashboard() {
     return examQuestions;
   });
 
-  // Keep localStorage in sync when currentQuestions state changes
+  // Keep localStorage and Firestore settings in sync when currentQuestions state changes
   useEffect(() => {
     localStorage.setItem("exam_question_pool", JSON.stringify(currentQuestions));
+    const poolRef = doc(db, "exam_sessions", "question_pool");
+    setDoc(poolRef, { questions: currentQuestions }).catch((err) => {
+      console.error("Error syncing question pool to Firestore:", err);
+    });
   }, [currentQuestions]);
+
+  // Load question pool from Firestore on mount
+  useEffect(() => {
+    const fetchQuestionPool = async () => {
+      try {
+        const poolRef = doc(db, "exam_sessions", "question_pool");
+        const docSnap = await getDoc(poolRef);
+        if (docSnap.exists() && docSnap.data().questions) {
+          setCurrentQuestions(docSnap.data().questions);
+        }
+      } catch (err) {
+        console.error("Error fetching live question pool from Firestore:", err);
+      }
+    };
+    fetchQuestionPool();
+  }, []);
   
   // New Question Form state
   const [newQuestion, setNewQuestion] = useState({
@@ -137,71 +157,7 @@ export function AdminDashboard() {
         }
       });
 
-      // Fallback: If no records are found in Firestore, populate with default mock data
-      if (docs.length === 0) {
-        liveList.push(
-          {
-            id: "live_1",
-            fullName: "Aniket Sharma",
-            rollNumber: "CS2022045",
-            branch: "Computer Science & Engineering",
-            progress: "8/10",
-            warnings: 1,
-            status: "Active",
-            lastUpdated: "Just now",
-            accessCode: "CAMPUS2026"
-          },
-          {
-            id: "live_2",
-            fullName: "Rohan Varma",
-            rollNumber: "ME2022102",
-            branch: "Mechanical Engineering",
-            progress: "4/10",
-            warnings: 3,
-            status: "Critical Focus Warning",
-            lastUpdated: "1m ago",
-            accessCode: "CAMPUS2026"
-          }
-        );
 
-        completedList.push(
-          {
-            id: "res_1",
-            fullName: "Kabir Mehta",
-            rollNumber: "CS2022031",
-            branch: "Computer Science & Engineering",
-            email: "kabir.mehta@college.edu",
-            phone: "9876543210",
-            college: "Government Engineering College",
-            yearOfPassing: "2026",
-            answered: "10/10",
-            score: "90%",
-            warnings: 0,
-            submission: "Manual Submit",
-            referenceId: "REF-983842",
-            date: "Today, 11:30 AM",
-            accessCode: "CAMPUS2026"
-          },
-          {
-            id: "res_2",
-            fullName: "Pooja Hegde",
-            rollNumber: "IT2022088",
-            branch: "Information Technology",
-            email: "pooja.hegde@college.edu",
-            phone: "9876543211",
-            college: "Government Engineering College",
-            yearOfPassing: "2026",
-            answered: "10/10",
-            score: "70%",
-            warnings: 2,
-            submission: "Manual Submit",
-            referenceId: "REF-294810",
-            date: "Today, 10:15 AM",
-            accessCode: "CAMPUS2026"
-          }
-        );
-        batches.add("CAMPUS2026");
-      }
 
       setLiveStudents(liveList);
       setCompletedResults(completedList);

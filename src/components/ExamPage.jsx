@@ -5,7 +5,7 @@ import { useExamSecurity } from "../hooks/useExamSecurity";
 import { SecurityWrapper } from "./SecurityWrapper";
 import { Clock, CheckCircle, ChevronLeft, ChevronRight, Bookmark, CircleDot, Shield, RefreshCw, Send, AlertTriangle } from "lucide-react";
 import { db } from "../firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 
 export function ExamPage() {
   const navigate = useNavigate();
@@ -67,43 +67,57 @@ export function ExamPage() {
     }
 
     // Load or generate candidate-specific shuffled questions pool
-    let activeQuestions = session.questions;
+    const initializeQuestions = async () => {
+      let activeQuestions = session.questions;
 
-    if (!activeQuestions) {
-      // Load question pool from local storage or initialize with default mock ones
-      let activePool = examQuestions;
-      const storedPool = localStorage.getItem("exam_question_pool");
-      if (storedPool) {
+      if (!activeQuestions) {
+        let activePool = examQuestions;
+        
         try {
-          activePool = JSON.parse(storedPool);
-        } catch (e) {
-          console.error("Error parsing stored question pool:", e);
+          // Fetch live question pool from Firestore
+          const poolRef = doc(db, "exam_sessions", "question_pool");
+          const docSnap = await getDoc(poolRef);
+          if (docSnap.exists() && docSnap.data().questions) {
+            activePool = docSnap.data().questions;
+          } else {
+            // Local storage fallback
+            const storedPool = localStorage.getItem("exam_question_pool");
+            if (storedPool) {
+              activePool = JSON.parse(storedPool);
+            }
+          }
+        } catch (err) {
+          console.error("Error loading question pool from Firestore:", err);
+          const storedPool = localStorage.getItem("exam_question_pool");
+          if (storedPool) {
+            activePool = JSON.parse(storedPool);
+          }
         }
-      } else {
-        localStorage.setItem("exam_question_pool", JSON.stringify(examQuestions));
+
+        // Shuffle the questions list
+        const shuffledQuestions = shuffleArray(activePool);
+
+        // Shuffle the options for each question
+        activeQuestions = shuffledQuestions.map((q) => ({
+          ...q,
+          options: shuffleArray(q.options),
+        }));
+
+        // Persist the shuffled questions to localStorage and sync with Firestore
+        session.questions = activeQuestions;
+        localStorage.setItem("exam_session", JSON.stringify(session));
+
+        const sessionDocRef = doc(db, "exam_sessions", session.id);
+        await updateDoc(sessionDocRef, { questions: activeQuestions }).catch((err) => {
+          console.error("Failed to sync shuffled questions to Firestore:", err);
+        });
       }
 
-      // Shuffle the questions list
-      const shuffledQuestions = shuffleArray(activePool);
+      setQuestions(activeQuestions);
+      setIsExamActive(true);
+    };
 
-      // Shuffle the options for each question
-      activeQuestions = shuffledQuestions.map((q) => ({
-        ...q,
-        options: shuffleArray(q.options),
-      }));
-
-      // Persist the shuffled questions to localStorage and sync with Firestore
-      session.questions = activeQuestions;
-      localStorage.setItem("exam_session", JSON.stringify(session));
-
-      const sessionDocRef = doc(db, "exam_sessions", session.id);
-      updateDoc(sessionDocRef, { questions: activeQuestions }).catch((err) => {
-        console.error("Failed to sync shuffled questions to Firestore:", err);
-      });
-    }
-
-    setQuestions(activeQuestions);
-    setIsExamActive(true);
+    initializeQuestions();
   }, [navigate]);
 
   // Ref to store the latest definition of handleFinalSubmit to avoid TDZ and stale closures
